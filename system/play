@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# Get server information
+LINK="https://github.com/kaccang/lampu/raw/refs/heads/main/"
+MYIP=$(wget -qO- ipinfo.io/ip)
+CITY=$(curl -s ipinfo.io/city)
+TIME=$(date +'%Y-%m-%d %H:%M:%S')
+
+# Remove unnecessary packages
+apt-get autoremove -y man-db apache2 ufw exim4 firewalld snapd*
+
+# Update and install necessary packages
+apt install -y software-properties-common
+apt update && apt upgrade -y
+apt install -y nginx zip pwgen openssl netcat bash-completion \
+curl socat xz-utils wget apt-transport-https dnsutils chrony jq \
+tar unzip p7zip-full python3-pip libc6 msmtp-mta ca-certificates \
+net-tools iptables iptables-persistent netfilter-persistent
+
+# Clear unused packages
+apt-get clean all; apt-get autoremove -y
+
+# Create directories for Xray
+mkdir -p /etc/{xray,vmess,websocket,vless,trojan,shadowsocks}
+mkdir -p /var/log/xray/
+mkdir -p /var/www/html/
+
+# Input domain
+read -rp "Input Your Domain For This Server: " SUB_DOMAIN
+echo "$SUB_DOMAIN" > /root/domain
+cp /root/domain /etc/xray/domain
+
+# Install SSL certificates
+domain=$(cat /root/domain)
+systemctl stop nginx
+curl https://acme-install.netlify.app/acme.sh -o /root/.acme.sh/acme.sh
+chmod +x /root/.acme.sh/acme.sh
+/root/.acme.sh/acme.sh --upgrade --auto-upgrade
+/root/.acme.sh/acme.sh --set-default-ca --server letsencrypt
+/root/.acme.sh/acme.sh --issue -d "$domain" --standalone -k ec-256
+/root/.acme.sh/acme.sh --installcert -d "$domain" --fullchainpath /etc/xray/xray.crt --keypath /etc/xray/xray.key --ecc
+chmod 600 /etc/xray/xray.key /etc/xray/xray.crt
+
+# Install Xray
+bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install -u www-data --version 24.9.30
+
+# Move configuration files to /etc/xray
+mv /usr/local/etc/xray/* /etc/xray/ || echo "No default configuration found."
+
+# menu bash
+mkdir -p /root/.tmpp/
+wget -O /root/.tmpp/menu.zip "${LINK}system/menu.zip" >/dev/null 2>&1
+unzip /root/.tmpp/menu.zip -d /root/.tmpp/
+chmod +x /root/.tmpp/*
+mv /root/.tmpp/* /usr/bin/ # pindahkan semua ke bin 
+
+# Ensure menu runs automatically after login
+if ! grep -q "menu" ~/.bashrc; then
+    echo "/usr/bin/menu" >> ~/.bashrc
+fi
+
+# Configure systemd service for Xray
+cat >/etc/systemd/system/xray.service <<EOF
+[Unit]
+Description=Xray Service
+Documentation=https://github.com/XTLS
+After=network.target nss-lookup.target
+
+[Service]
+User=www-data
+ExecStart=/usr/local/bin/xray run -config /etc/xray/config.json
+Restart=on-failure
+RestartPreventExitStatus=23
+LimitNPROC=10000
+LimitNOFILE=1000000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Configure nginx and Xray
+rm /etc/nginx/nginx.conf
+wget -O /etc/nginx/nginx.conf "${LINK}system/nginx.conf" >/dev/null 2>&1
+
+DOMA=$(cat /etc/xray/domain)
+NGINX_CONF="/etc/nginx/nginx.conf"
+
+sed -i "s/server_name example.com;/server_name $DOMA;/" "$NGINX_CONF" && systemctl reload nginx
+
+rm /etc/xray/config.json
+wget -O /etc/xray/config.json "${LINK}system/config.json" >/dev/null 2>&1
+
+# Create log files
+touch /var/log/xray/access.log /var/log/xray/error.log
+chmod 640 /var/log/xray/access.log /var/log/xray/error.log
+chown www-data:www-data /var/log/xray/access.log /var/log/xray/error.log
+
+# Reload systemd and start Xray
+systemctl daemon-reload
+systemctl enable nginx
+systemctl enable xray
+systemctl start nginx
+systemctl start xray
+
+# Final Information
+echo "Xray XTLS Server has been successfully installed!"
+echo "Domain: $domain"
+echo "IP: $MYIP"
+echo "City: $CITY"
+echo "Time: $TIME"
+echo "Rebooting"
+sleep 10
+reboot
