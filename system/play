@@ -21,7 +21,7 @@ net-tools iptables iptables-persistent netfilter-persistent
 apt-get clean all; apt-get autoremove -y
 
 # Create directories for Xray
-mkdir -p /etc/{xray,vmess,websocket,vless,trojan,shadowsocks}
+mkdir -p /etc/xray
 mkdir -p /var/log/xray/
 mkdir -p /var/www/html/
 mkdir -p /root/.acme.sh
