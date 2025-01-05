@@ -99,6 +99,7 @@ wget -O /etc/xray/config.json "${LINK}system/config.json" >/dev/null 2>&1
 touch /var/log/xray/access.log /var/log/xray/error.log
 chmod 640 /var/log/xray/access.log /var/log/xray/error.log
 chown www-data:www-data /var/log/xray/access.log /var/log/xray/error.log
+rm /etc/systemd/system/xray.service.d/10-donot_touch_single_conf.conf
 
 # Reload systemd and start Xray
 systemctl daemon-reload
