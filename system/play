@@ -24,6 +24,7 @@ apt-get clean all; apt-get autoremove -y
 mkdir -p /etc/{xray,vmess,websocket,vless,trojan,shadowsocks}
 mkdir -p /var/log/xray/
 mkdir -p /var/www/html/
+mkdir -p /root/.acme.sh
 
 # Input domain
 read -rp "Input Your Domain For This Server: " SUB_DOMAIN
