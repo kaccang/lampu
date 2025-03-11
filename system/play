@@ -12,7 +12,7 @@ apt-get autoremove -y man-db apache2 ufw exim4 firewalld snapd*
 # Update and install necessary packages
 apt install -y software-properties-common
 apt update && apt upgrade -y
-apt install -y nginx zip pwgen openssl netcat bash-completion \
+apt install -y nginx zip pwgen openssl bash-completion \
 curl socat xz-utils wget apt-transport-https dnsutils chrony jq \
 tar unzip p7zip-full python3-pip libc6 msmtp-mta ca-certificates \
 net-tools iptables iptables-persistent netfilter-persistent
